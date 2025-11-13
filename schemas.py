@@ -2,47 +2,65 @@
 Database Schemas
 
 Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
 Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Class name lowercased is used as the collection name.
+
+This app models a simple startup expenditure manager with categories,
+expenses, and optional monthly budgets.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
+from datetime import datetime
 
-# Example schemas (replace with your own):
+# ---------- Core Collections ----------
 
+class Category(BaseModel):
+    """
+    Categories for expenses
+    Collection: "category"
+    """
+    name: str = Field(..., description="Category name, e.g., Marketing, Cloud, Salaries")
+    color: Optional[str] = Field(None, description="Hex color for visualizations (e.g., #22c55e)")
+
+
+class Expense(BaseModel):
+    """
+    Individual expense items
+    Collection: "expense"
+    """
+    title: str = Field(..., description="Short label for the expense")
+    amount: float = Field(..., ge=0, description="Amount spent")
+    category_id: Optional[str] = Field(None, description="Reference to a Category document _id as string")
+    date: datetime = Field(default_factory=datetime.utcnow, description="Expense date")
+    vendor: Optional[str] = Field(None, description="Vendor or payee")
+    payment_method: Optional[str] = Field(None, description="Card, Wire, ACH, etc.")
+    notes: Optional[str] = Field(None, description="Any additional context")
+
+
+class Budget(BaseModel):
+    """
+    Monthly budget per category or overall
+    Collection: "budget"
+    """
+    category_id: Optional[str] = Field(None, description="If set, budget applies to that category; otherwise overall")
+    period: Literal["month"] = Field("month", description="Currently only monthly budgets supported")
+    month: int = Field(..., ge=1, le=12, description="Month number (1-12)")
+    year: int = Field(..., ge=2000, le=2100, description="Calendar year")
+    limit: float = Field(..., ge=0, description="Spending cap for the period")
+
+
+# Example schemas kept for reference (not used by the app)
 class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    name: str
+    email: str
+    address: str
+    age: Optional[int] = None
+    is_active: bool = True
 
 class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
-
-# Add your own schemas here:
-# --------------------------------------------------
-
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+    title: str
+    description: Optional[str] = None
+    price: float
+    category: str
+    in_stock: bool = True
